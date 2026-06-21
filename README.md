@@ -8,7 +8,7 @@ and even your own logo in the center — no backend, no API key needed.
 
 ## 📸 Screenshot
 
-QRCodeGenerator.png
+QR Code Generator.png
 
 ---
 
