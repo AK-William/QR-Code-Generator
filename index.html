@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code Generator</title>
+
+  <!-- Local copy of QRCode.js (CDN: https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js) -->
+  <script src="qrcode.min.js"></script>
+
+  <style>
+    /* ===== RESET & VARIABLES ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #f0f4ff;
+      --surface:    #ffffff;
+      --surface2:   #f5f7ff;
+      --border:     #d8dff5;
+      --text:       #1a1d2e;
+      --text-muted: #6b7280;
+      --accent:     #5b6af0;
+      --accent-h:   #4453d6;
+      --danger:     #e85252;
+      --success:    #22c55e;
+      --radius:     14px;
+      --shadow:     0 4px 24px rgba(91,106,240,.12);
+      --transition: .2s ease;
+    }
+
+    [data-theme="dark"] {
+      --bg:         #0f1117;
+      --surface:    #1a1d2e;
+      --surface2:   #222540;
+      --border:     #2e3250;
+      --text:       #e8eaf6;
+      --text-muted: #8890b5;
+      --shadow:     0 4px 24px rgba(0,0,0,.4);
+    }
+
+    /* ===== BASE ===== */
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .logo svg { width: 28px; height: 28px; }
+
+    /* ===== THEME TOGGLE ===== */
+    .theme-toggle {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: .85rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background var(--transition);
+    }
+    .theme-toggle:hover { background: var(--border); }
+
+    /* ===== LAYOUT ===== */
+    main {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 680px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    /* ===== CARD ===== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    /* ===== FORM ELEMENTS ===== */
+    label {
+      display: block;
+      font-size: .85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: .95rem;
+      outline: none;
+      transition: border var(--transition);
+      margin-bottom: 16px;
+    }
+
+    input[type="text"]:focus,
+    select:focus { border-color: var(--accent); }
+
+    /* ===== COLOR PICKERS ROW ===== */
+    .color-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .color-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .color-preview {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      cursor: pointer;
+      transition: border var(--transition);
+    }
+    .color-preview:hover { border-color: var(--accent); }
+
+    .color-preview input[type="color"] {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 6px;
+      padding: 0;
+      cursor: pointer;
+      background: none;
+      margin: 0;
+    }
+
+    .color-preview span {
+      font-size: .82rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* ===== OPTIONS ROW ===== */
+    .options-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    /* ===== LOGO UPLOAD ===== */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border var(--transition), background var(--transition);
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .upload-area:hover { border-color: var(--accent); background: var(--surface2); }
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .upload-area p { font-size: .85rem; color: var(--text-muted); margin: 0; }
+    .upload-area .upload-icon { font-size: 1.6rem; margin-bottom: 4px; }
+
+    #logo-name {
+      font-size: .8rem;
+      color: var(--accent);
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 20px;
+      border-radius: 10px;
+      font-size: .92rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: transform .1s, box-shadow .1s, background var(--transition);
+    }
+    .btn:active { transform: scale(.97); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      width: 100%;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 14px rgba(91,106,240,.35);
+    }
+    .btn-primary:hover { background: var(--accent-h); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      flex: 1;
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1.5px solid var(--danger);
+      font-size: .8rem;
+      padding: 5px 12px;
+    }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+
+    .action-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    /* ===== QR DISPLAY AREA ===== */
+    .qr-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 260px;
+      background: var(--surface2);
+      border-radius: var(--radius);
+      border: 2px dashed var(--border);
+      margin-bottom: 14px;
+      transition: border var(--transition);
+      padding: 24px;
+      position: relative;
+    }
+
+    .qr-wrapper.has-qr { border-style: solid; border-color: var(--accent); }
+
+    #qr-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: .9rem;
+    }
+
+    #qr-placeholder svg { opacity: .35; }
+
+    /* QRCode.js appends an img or canvas inside #qr-output */
+    #qr-output { display: none; }
+    #qr-output canvas,
+    #qr-output img { border-radius: 8px; display: block; }
+
+    /* The merged canvas we show after logo overlay */
+    #qr-canvas-display {
+      border-radius: 8px;
+      display: none;
+      max-width: 100%;
+    }
+
+    /* ===== TOAST NOTIFICATION ===== */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--text);
+      color: var(--bg);
+      padding: 10px 22px;
+      border-radius: 50px;
+      font-size: .88rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: transform .3s ease, opacity .3s ease;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ===== HISTORY SECTION ===== */
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 10px;
+    }
+
+    .history-item {
+      cursor: pointer;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+      overflow: hidden;
+      transition: border var(--transition), transform .15s;
+      background: var(--surface2);
+    }
+    .history-item:hover { border-color: var(--accent); transform: scale(1.04); }
+
+    .history-item img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: contain;
+      display: block;
+    }
+
+    .history-item p {
+      font-size: .68rem;
+      color: var(--text-muted);
+      padding: 4px 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-empty {
+      color: var(--text-muted);
+      font-size: .88rem;
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    /* ===== FULL-WIDTH CARD (history) ===== */
+    .full-width { grid-column: 1 / -1; }
+
+    /* ===== SPINNER ===== */
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== SECTION DIVIDER ===== */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <div class="logo">
+    <!-- Simple QR icon inline SVG -->
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/>
+      <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18h3v3h-3zM20 20h1v1h-1z"/>
+    </svg>
+    QR Generator
+  </div>
+
+  <!-- Theme toggle button — switches between dark and light mode -->
+  <button class="theme-toggle" id="theme-btn">
+    <span id="theme-icon">🌙</span>
+    <span id="theme-label">Dark Mode</span>
+  </button>
+</header>
+
+<!-- ===== MAIN GRID ===== -->
+<main>
+
+  <!-- ============================
+       LEFT COLUMN: INPUT + OPTIONS
+       ============================ -->
+  <div>
+
+    <!-- Input Card -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>Content</h2>
+
+      <label for="qr-input">Text or URL</label>
+      <input
+        type="text"
+        id="qr-input"
+        placeholder="e.g. https://example.com or Hello World"
+        autocomplete="off"
+      />
+
+      <button class="btn btn-primary" id="generate-btn">
+        <!-- QR icon -->
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18h3v3h-3zM20 20h1v1h-1z"/>
+        </svg>
+        Generate QR Code
+      </button>
+    </div>
+
+    <!-- Options Card -->
+    <div class="card">
+      <h2>Customize</h2>
+
+      <!-- Color pickers -->
+      <div class="color-row">
+        <div class="color-group">
+          <label>Foreground</label>
+          <div class="color-preview" onclick="document.getElementById('fg-color').click()">
+            <input type="color" id="fg-color" value="#000000" />
+            <span id="fg-hex">#000000</span>
+          </div>
+        </div>
+        <div class="color-group">
+          <label>Background</label>
+          <div class="color-preview" onclick="document.getElementById('bg-color').click()">
+            <input type="color" id="bg-color" value="#ffffff" />
+            <span id="bg-hex">#ffffff</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Size and error correction selects -->
+      <div class="options-row">
+        <div>
+          <label for="qr-size">Size</label>
+          <select id="qr-size">
+            <option value="160">Small (160px)</option>
+            <option value="240" selected>Medium (240px)</option>
+            <option value="360">Large (360px)</option>
+          </select>
+        </div>
+        <div>
+          <label for="ec-level">Error Correction</label>
+          <select id="ec-level">
+            <option value="L">L — Low (7%)</option>
+            <option value="M">M — Medium (15%)</option>
+            <option value="Q">Q — Quartile (25%)</option>
+            <option value="H" selected>H — High (30%)</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Logo upload area -->
+      <label>Center Logo (optional)</label>
+      <div class="upload-area" id="upload-area">
+        <input type="file" id="logo-upload" accept="image/*" />
+        <div class="upload-icon">🖼️</div>
+        <p>Click to upload a logo image</p>
+        <p id="logo-name"></p>
+      </div>
+
+      <!-- Remove logo button — shown only after a logo is loaded -->
+      <button class="btn btn-danger" id="remove-logo-btn" style="display:none">
+        ✕ Remove Logo
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ============================
+       RIGHT COLUMN: QR DISPLAY
+       ============================ -->
+  <div>
+    <div class="card">
+      <h2>QR Code</h2>
+
+      <!-- QR display wrapper — shows placeholder or the generated QR -->
+      <div class="qr-wrapper" id="qr-wrapper">
+
+        <!-- Placeholder shown before any QR is generated -->
+        <div id="qr-placeholder">
+          <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18h3v3h-3zM20 20h1v1h-1z"/>
+          </svg>
+          <p>Your QR code will appear here</p>
+        </div>
+
+        <!-- Loading spinner shown during generation -->
+        <div class="spinner" id="spinner"></div>
+
+        <!-- Hidden div where QRCode.js places its raw canvas/img output -->
+        <div id="qr-output"></div>
+
+        <!-- The final merged canvas (QR + logo) that the user sees -->
+        <canvas id="qr-canvas-display"></canvas>
+
+      </div>
+
+      <!-- Download and Copy buttons — shown after generation -->
+      <div class="action-row">
+        <button class="btn btn-secondary" id="download-btn" disabled>
+          💾 Download PNG
+        </button>
+        <button class="btn btn-secondary" id="copy-btn" disabled>
+          📋 Copy Text
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================
+       HISTORY CARD (full width)
+       ============================ -->
+  <div class="card full-width">
+    <h2 style="display:flex;align-items:center;justify-content:space-between">
+      Recent History
+      <button class="btn btn-danger" id="clear-history-btn">Clear All</button>
+    </h2>
+    <div class="history-grid" id="history-grid">
+      <p class="history-empty">No history yet — generate your first QR code!</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast notification element -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+// ============================================================
+//   QR CODE GENERATOR — main script
+//   Sections:
+//     1. STATE
+//     2. SECTION: COLOR & SIZE OPTIONS
+//     3. SECTION: LOGO OVERLAY
+//     4. SECTION: QR GENERATION
+//     5. SECTION: DOWNLOAD & COPY
+//     6. SECTION: HISTORY
+//     7. SECTION: DARK / LIGHT MODE
+//     8. SECTION: TOAST
+//     9. SECTION: EVENT LISTENERS
+// ============================================================
+
+
+// ===== SECTION: STATE =====
+// Central place to keep track of data that multiple functions need.
+
+var logoDataURL = null;   // Stores the uploaded logo as a base64 data URL (or null if none)
+var lastQRDataURL = null; // Stores the final QR PNG data URL so Download can use it
+
+
+// ===== SECTION: COLOR & SIZE OPTIONS =====
+
+// Updates the hex label next to the color swatch whenever the user picks a color
+function onFgColorChange() {
+  var color = document.getElementById('fg-color').value;
+  document.getElementById('fg-hex').textContent = color;
+}
+
+function onBgColorChange() {
+  var color = document.getElementById('bg-color').value;
+  document.getElementById('bg-hex').textContent = color;
+}
+
+
+// ===== SECTION: LOGO OVERLAY =====
+
+/**
+ * handleLogoUpload
+ * Called when the user picks an image file for the center logo.
+ * Uses the FileReader API to read the image and store it as a base64 data URL.
+ */
+function handleLogoUpload(event) {
+  var file = event.target.files[0];
+
+  // If the user cancelled the file dialog, do nothing
+  if (!file) return;
+
+  var reader = new FileReader();
+
+  // FileReader fires this event once it has finished reading the file
+  reader.onload = function(e) {
+    logoDataURL = e.target.result; // Save the base64 image string globally
+
+    // Show the file name so the user knows it loaded
+    document.getElementById('logo-name').textContent = '✓ ' + file.name;
+    document.getElementById('remove-logo-btn').style.display = 'inline-flex';
+
+    showToast('Logo loaded — regenerate to apply it!');
+  };
+
+  // Tell FileReader to read the file as a base64 data URL
+  reader.readAsDataURL(file);
+}
+
+/**
+ * removeLogoImage
+ * Clears the stored logo so the next QR generation will have no center image.
+ */
+function removeLogo() {
+  logoDataURL = null;
+  document.getElementById('logo-upload').value = '';       // Reset the file input
+  document.getElementById('logo-name').textContent = '';
+  document.getElementById('remove-logo-btn').style.display = 'none';
+  showToast('Logo removed');
+}
+
+/**
+ * drawLogoOnCanvas
+ * Takes the QR code canvas produced by QRCode.js and draws the logo image
+ * on top of the center, with a white padding box behind it so it stands out.
+ *
+ * @param {HTMLCanvasElement} qrCanvas - The canvas QRCode.js drew the QR onto
+ * @param {string} logoSrc             - Base64 data URL of the logo image
+ * @param {Function} callback          - Called after the logo is drawn, receives the merged canvas
+ */
+function drawLogoOnCanvas(qrCanvas, logoSrc, callback) {
+  var mergedCanvas = document.getElementById('qr-canvas-display');
+  mergedCanvas.width  = qrCanvas.width;
+  mergedCanvas.height = qrCanvas.height;
+
+  var ctx = mergedCanvas.getContext('2d');
+
+  // Step 1: Copy the QR code onto our merged canvas
+  ctx.drawImage(qrCanvas, 0, 0);
+
+  var logoImg = new Image();
+
+  logoImg.onload = function() {
+    var qrSize = qrCanvas.width;
+
+    // Logo should be about 20% of the QR code width — large enough to see, small enough to keep QR scannable
+    var logoSize = qrSize * 0.20;
+
+    // Add 8px white padding on each side of the logo so it stands out from the QR pattern
+    var padding = 8;
+    var boxSize = logoSize + padding * 2;
+
+    // Calculate the top-left corner so the logo box sits perfectly in the center
+    var boxX = (qrSize - boxSize) / 2;
+    var boxY = (qrSize - boxSize) / 2;
+
+    // Step 2: Draw white rounded background box behind the logo
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxSize, boxSize, 6); // 6px corner radius
+    ctx.fill();
+
+    // Step 3: Draw the logo image inside the white box
+    ctx.drawImage(logoImg, boxX + padding, boxY + padding, logoSize, logoSize);
+
+    callback(mergedCanvas);
+  };
+
+  // Trigger the load by setting the source
+  logoImg.src = logoSrc;
+}
+
+/**
+ * showMergedCanvas
+ * Copies a plain QR canvas (no logo) directly onto the display canvas.
+ * Used when there is no logo to overlay.
+ *
+ * @param {HTMLCanvasElement} qrCanvas - The QR canvas from QRCode.js
+ */
+function showMergedCanvas(qrCanvas) {
+  var mergedCanvas = document.getElementById('qr-canvas-display');
+  mergedCanvas.width  = qrCanvas.width;
+  mergedCanvas.height = qrCanvas.height;
+
+  var ctx = mergedCanvas.getContext('2d');
+  ctx.drawImage(qrCanvas, 0, 0); // Simple pixel-for-pixel copy
+
+  finaliseDisplay(mergedCanvas);
+}
+
+/**
+ * finaliseDisplay
+ * After the merged canvas is ready (with or without logo), this function:
+ *  - Shows the canvas to the user
+ *  - Saves the PNG data URL for the download button
+ *  - Enables the download and copy buttons
+ *  - Saves this QR code to the history
+ */
+function finaliseDisplay(mergedCanvas) {
+  var placeholder   = document.getElementById('qr-placeholder');
+  var spinner       = document.getElementById('spinner');
+  var canvasDisplay = document.getElementById('qr-canvas-display');
+  var qrWrapper     = document.getElementById('qr-wrapper');
+
+  // Hide spinner and placeholder, show the finished canvas
+  spinner.style.display      = 'none';
+  placeholder.style.display  = 'none';
+  canvasDisplay.style.display = 'block';
+
+  qrWrapper.classList.add('has-qr'); // Adds the accent border styling
+
+  // Save the PNG data URL globally so the download button can use it later
+  lastQRDataURL = mergedCanvas.toDataURL('image/png');
+
+  // Enable action buttons
+  document.getElementById('download-btn').disabled = false;
+  document.getElementById('copy-btn').disabled     = false;
+
+  // Save this QR code to the localStorage history
+  var inputText = document.getElementById('qr-input').value.trim();
+  saveToHistory(inputText, lastQRDataURL);
+}
+
+
+// ===== SECTION: QR GENERATION =====
+
+/**
+ * generateQR
+ * The main function that reads the user's options and creates a QR code.
+ *
+ * Flow:
+ *  1. Validate the input text
+ *  2. Show a loading spinner
+ *  3. Clear any previous QR output
+ *  4. Create a new QRCode instance (which draws to a canvas inside #qr-output)
+ *  5. Wait a tick for the canvas to be painted, then read it
+ *  6. If a logo is uploaded, call drawLogoOnCanvas; otherwise call showMergedCanvas
+ */
+function generateQR() {
+  var inputText = document.getElementById('qr-input').value.trim();
+
+  // Don't proceed if the input is empty
+  if (!inputText) {
+    showToast('Please enter some text or a URL first!');
+    document.getElementById('qr-input').focus();
+    return;
+  }
+
+  var fgColor   = document.getElementById('fg-color').value;
+  var bgColor   = document.getElementById('bg-color').value;
+  var qrSize    = parseInt(document.getElementById('qr-size').value, 10);
+  var ecLevelKey = document.getElementById('ec-level').value;
+
+  // Map the user-friendly dropdown value to the QRCode.js constant
+  var EC_LEVEL_MAP = {
+    L: QRCode.CorrectLevel.L,
+    M: QRCode.CorrectLevel.M,
+    Q: QRCode.CorrectLevel.Q,
+    H: QRCode.CorrectLevel.H
+  };
+
+  // If a logo is uploaded, force the error correction level to H (30% recovery)
+  // so the QR remains scannable even with the logo covering the center
+  var ecLevel = logoDataURL
+    ? QRCode.CorrectLevel.H
+    : EC_LEVEL_MAP[ecLevelKey];
+
+  // Show loading state
+  var spinner     = document.getElementById('spinner');
+  var placeholder = document.getElementById('qr-placeholder');
+  var qrOutput    = document.getElementById('qr-output');
+  var canvasDisplay = document.getElementById('qr-canvas-display');
+
+  placeholder.style.display   = 'none';
+  canvasDisplay.style.display = 'none';
+  spinner.style.display       = 'block';
+
+  // Clear any canvas QRCode.js drew on a previous generation
+  qrOutput.innerHTML = '';
+
+  // Use setTimeout(fn, 50) so the browser has a chance to repaint and show the
+  // spinner BEFORE the (potentially slow) QR calculation blocks the thread
+  setTimeout(function() {
+
+    // QRCode.js creates a canvas or img inside the given element
+    new QRCode(qrOutput, {
+      text:           inputText,
+      width:          qrSize,
+      height:         qrSize,
+      colorDark:      fgColor,
+      colorLight:     bgColor,
+      correctLevel:   ecLevel
+    });
+
+    // QRCode.js appends the element synchronously but the canvas pixels may
+    // not be ready yet — another small delay lets the paint finish
+    setTimeout(function() {
+      // QRCode.js may create a <canvas> or an <img>; find whichever is there
+      var qrCanvas = qrOutput.querySelector('canvas');
+      var qrImg    = qrOutput.querySelector('img');
+
+      if (qrCanvas) {
+        // We have a canvas — overlay the logo directly onto it (or copy it as-is)
+        if (logoDataURL) {
+          drawLogoOnCanvas(qrCanvas, logoDataURL, finaliseDisplay);
+        } else {
+          showMergedCanvas(qrCanvas);
+        }
+      } else if (qrImg) {
+        // Some browsers get an <img> from QRCode.js; convert it to a canvas first
+        qrImg.onload = function() {
+          var tempCanvas = document.createElement('canvas');
+          tempCanvas.width  = qrSize;
+          tempCanvas.height = qrSize;
+          tempCanvas.getContext('2d').drawImage(qrImg, 0, 0, qrSize, qrSize);
+
+          if (logoDataURL) {
+            drawLogoOnCanvas(tempCanvas, logoDataURL, finaliseDisplay);
+          } else {
+            showMergedCanvas(tempCanvas);
+          }
+        };
+        // If the img is already loaded (cached), fire onload manually
+        if (qrImg.complete) qrImg.onload();
+      } else {
+        // Unexpected: neither canvas nor img found
+        spinner.style.display = 'none';
+        showToast('Something went wrong — please try again.');
+      }
+
+    }, 80); // 80ms for canvas pixels to be committed
+
+  }, 50); // 50ms to allow spinner repaint
+}
+
+
+// ===== SECTION: DOWNLOAD & COPY =====
+
+/**
+ * downloadQR
+ * Creates a temporary <a> link with the QR PNG data URL and triggers a click
+ * to download the file to the user's device.
+ */
+function downloadQR() {
+  if (!lastQRDataURL) return;
+
+  var link = document.createElement('a');
+  link.href     = lastQRDataURL;
+  link.download = 'qrcode.png'; // Browser will prompt with this file name
+
+  // Append, click, remove — this pattern works across all browsers
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast('QR code downloaded!');
+}
+
+/**
+ * copyText
+ * Copies the text from the input field (not the QR image) to the clipboard
+ * using the modern navigator.clipboard API.
+ */
+function copyText() {
+  var inputText = document.getElementById('qr-input').value.trim();
+  if (!inputText) return;
+
+  navigator.clipboard.writeText(inputText)
+    .then(function() {
+      showToast('Text copied to clipboard!');
+    })
+    .catch(function() {
+      // Clipboard API may be blocked on non-HTTPS pages
+      showToast('Copy failed — try HTTPS or copy manually.');
+    });
+}
+
+
+// ===== SECTION: HISTORY =====
+
+var HISTORY_KEY = 'qr_history'; // localStorage key name
+var MAX_HISTORY = 5;            // Keep only the last 5 QR codes
+
+/**
+ * saveToHistory
+ * Saves the current QR code (as a PNG data URL thumbnail) plus the source
+ * text into localStorage. Trims the list to MAX_HISTORY entries.
+ *
+ * @param {string} text      - The text that was encoded
+ * @param {string} dataURL   - The PNG data URL of the finished QR code
+ */
+function saveToHistory(text, dataURL) {
+  var history = loadHistory();
+
+  // Build the new entry object
+  var entry = {
+    text: text,
+    img:  dataURL,
+    date: new Date().toLocaleDateString()
+  };
+
+  // Put the newest entry at the start of the array
+  history.unshift(entry);
+
+  // Keep only the most recent MAX_HISTORY items
+  history = history.slice(0, MAX_HISTORY);
+
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+/**
+ * loadHistory
+ * Reads the history array from localStorage. Returns an empty array if nothing is saved.
+ */
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  } catch (e) {
+    return []; // Guard against malformed JSON
+  }
+}
+
+/**
+ * renderHistory
+ * Reads the history from localStorage and re-renders the history grid in the DOM.
+ * Clicking a history item restores that QR code and its input text.
+ */
+function renderHistory() {
+  var grid    = document.getElementById('history-grid');
+  var history = loadHistory();
+
+  if (history.length === 0) {
+    grid.innerHTML = '<p class="history-empty">No history yet — generate your first QR code!</p>';
+    return;
+  }
+
+  grid.innerHTML = ''; // Clear before re-rendering
+
+  history.forEach(function(entry, index) {
+    var item = document.createElement('div');
+    item.className = 'history-item';
+
+    // Show the thumbnail image
+    var img = document.createElement('img');
+    img.src = entry.img;
+    img.alt = entry.text;
+
+    // Show a short preview of the source text below the thumbnail
+    var label = document.createElement('p');
+    label.textContent = entry.text;
+
+    item.appendChild(img);
+    item.appendChild(label);
+
+    // Clicking a history item re-populates the input and shows the QR again
+    item.addEventListener('click', function() {
+      document.getElementById('qr-input').value = entry.text;
+
+      // Restore the saved QR image onto the display canvas
+      var mergedCanvas  = document.getElementById('qr-canvas-display');
+      var restoreImg    = new Image();
+
+      restoreImg.onload = function() {
+        mergedCanvas.width  = restoreImg.naturalWidth;
+        mergedCanvas.height = restoreImg.naturalHeight;
+        mergedCanvas.getContext('2d').drawImage(restoreImg, 0, 0);
+
+        document.getElementById('qr-placeholder').style.display  = 'none';
+        document.getElementById('qr-canvas-display').style.display = 'block';
+        document.getElementById('qr-wrapper').classList.add('has-qr');
+
+        lastQRDataURL = entry.img;
+        document.getElementById('download-btn').disabled = false;
+        document.getElementById('copy-btn').disabled     = false;
+      };
+
+      restoreImg.src = entry.img;
+    });
+
+    grid.appendChild(item);
+  });
+}
+
+/**
+ * clearHistory
+ * Removes all history from localStorage and re-renders the empty history grid.
+ */
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+  showToast('History cleared');
+}
+
+
+// ===== SECTION: DARK / LIGHT MODE =====
+
+/**
+ * toggleTheme
+ * Flips the data-theme attribute on <html> between "light" and "dark",
+ * which switches all CSS variables automatically.
+ */
+function toggleTheme() {
+  var html      = document.documentElement;
+  var isDark    = html.getAttribute('data-theme') === 'dark';
+  var nextTheme = isDark ? 'light' : 'dark';
+
+  html.setAttribute('data-theme', nextTheme);
+
+  // Update button icon and label to reflect the new state
+  document.getElementById('theme-icon').textContent  = isDark ? '🌙' : '☀️';
+  document.getElementById('theme-label').textContent = isDark ? 'Dark Mode' : 'Light Mode';
+
+  // Persist the user's preference so it survives page reloads
+  localStorage.setItem('qr_theme', nextTheme);
+}
+
+/**
+ * applyStoredTheme
+ * On page load, check if the user previously selected a theme and apply it.
+ */
+function applyStoredTheme() {
+  var stored = localStorage.getItem('qr_theme');
+  if (stored === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.getElementById('theme-icon').textContent  = '☀️';
+    document.getElementById('theme-label').textContent = 'Light Mode';
+  }
+}
+
+
+// ===== SECTION: TOAST =====
+
+var toastTimer = null; // Holds the auto-hide timer ID so we can reset it
+
+/**
+ * showToast
+ * Briefly shows a notification message at the bottom of the screen.
+ *
+ * @param {string} message - The text to display
+ */
+function showToast(message) {
+  var toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+
+  // Cancel any previously scheduled hide so rapid calls don't race
+  clearTimeout(toastTimer);
+
+  // Auto-hide after 2.5 seconds
+  toastTimer = setTimeout(function() {
+    toast.classList.remove('show');
+  }, 2500);
+}
+
+
+// ===== SECTION: EVENT LISTENERS =====
+
+// Wire up Generate button
+document.getElementById('generate-btn').addEventListener('click', generateQR);
+
+// Allow pressing Enter inside the text input to trigger generation
+document.getElementById('qr-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') generateQR();
+});
+
+// Color picker changes — update the hex labels live
+document.getElementById('fg-color').addEventListener('input', onFgColorChange);
+document.getElementById('bg-color').addEventListener('input', onBgColorChange);
+
+// Logo file input
+document.getElementById('logo-upload').addEventListener('change', handleLogoUpload);
+
+// Remove logo button
+document.getElementById('remove-logo-btn').addEventListener('click', removeLogo);
+
+// Download button
+document.getElementById('download-btn').addEventListener('click', downloadQR);
+
+// Copy text button
+document.getElementById('copy-btn').addEventListener('click', copyText);
+
+// Clear history button
+document.getElementById('clear-history-btn').addEventListener('click', clearHistory);
+
+// Dark/Light mode toggle
+document.getElementById('theme-btn').addEventListener('click', toggleTheme);
+
+
+// ===== INITIALISATION =====
+// Run once on page load to restore state from localStorage
+
+applyStoredTheme(); // Restore dark/light preference
+renderHistory();    // Show any previously saved QR codes in the history grid
+
+</script>
+
+</body>
+</html>
